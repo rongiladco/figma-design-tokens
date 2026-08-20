@@ -1,0 +1,59 @@
+{
+  "skill_name": "figma-design-tokens",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "I just spun up a blank Figma file for a new SaaS analytics dashboard I'm building. Want a clean, trustworthy color system (probably blue-based) and a solid type scale — nothing fancy, just enough to start designing real screens today. No dark mode needed for now.",
+      "expected_output": "A two-tier color schema (primitives + semantic aliases), a semantic type scale, an HTML preview, and a filled-in Figma plugin (Path A) ready to create the tokens — with reasonable stated assumptions in place of unanswerable clarifying questions.",
+      "files": [],
+      "assertions": [
+        "token_schema_valid_json",
+        "semantic_aliases_resolve",
+        "contrast_meets_target",
+        "figma_plugin_deliverable_produced",
+        "variable_scopes_set_explicitly",
+        "text_style_uses_valid_style_field",
+        "color_values_include_alpha"
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "Can you pull the color and typography feel from stripe.com and set up a matching token system for a fintech side project I'm starting? Needs to hit WCAG AA.",
+      "expected_output": "Same deliverable shape as eval 0, but color/type direction should visibly reflect stripe.com's actual palette/typography rather than a generic blue system, and every semantic text/background pairing must meet WCAG AA (4.5:1) since that was explicitly requested.",
+      "files": [],
+      "assertions": [
+        "token_schema_valid_json",
+        "semantic_aliases_resolve",
+        "contrast_meets_target",
+        "figma_plugin_deliverable_produced",
+        "variable_scopes_set_explicitly",
+        "text_style_uses_valid_style_field",
+        "color_values_include_alpha"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Here's a screenshot of an app whose look I like — build me a color + type system based on it for a blank Figma file.",
+      "expected_output": "Same deliverable shape, with color/type direction plausibly derived from the screenshot's actual UI (not a generic default), and explicit hedging that extracted values are approximations, not exact source values. Requires attaching a real screenshot image when running this eval.",
+      "files": ["<attach a real UI screenshot here>"],
+      "assertions": [
+        "token_schema_valid_json",
+        "semantic_aliases_resolve",
+        "contrast_meets_target",
+        "figma_plugin_deliverable_produced",
+        "variable_scopes_set_explicitly",
+        "text_style_uses_valid_style_field",
+        "color_values_include_alpha"
+      ]
+    }
+  ],
+  "assertion_notes": {
+    "token_schema_valid_json": "Token schema is valid, well-structured JSON",
+    "semantic_aliases_resolve": "Every semantic color alias resolves to a real primitive",
+    "contrast_meets_target": "Semantic text/background pairings verifiably meet the accessibility target (via scripts/color_tools.py check-contrast)",
+    "figma_plugin_deliverable_produced": "A concrete Figma-side creation artifact was produced, not just a description",
+    "variable_scopes_set_explicitly": "Variable scopes are set explicitly, not left at Figma's ALL_SCOPES default",
+    "text_style_uses_valid_style_field": "Text styles use a real Figma style name (string, e.g. \"Semi Bold\"), not a bare numeric weight",
+    "color_values_include_alpha": "COLOR variable values include an alpha channel ({r,g,b,a}), which Figma's Variables API requires"
+  }
+}

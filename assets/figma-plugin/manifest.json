@@ -1,0 +1,7 @@
+{
+  "name": "Design Token Creator (figma-design-tokens skill)",
+  "id": "figma-design-tokens-creator",
+  "api": "1.0.0",
+  "main": "code.js",
+  "editorType": ["figma"]
+}

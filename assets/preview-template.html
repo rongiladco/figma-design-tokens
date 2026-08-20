@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title><!--TITLE--></title>
+<!--GOOGLE_FONT_LINK-->
+<style>
+  :root {
+    --page-bg: #ffffff;
+    --page-fg: #18181b;
+    --muted-fg: #71717a;
+    --card-bg: #fafafa;
+    --card-border: #e4e4e7;
+  }
+  [data-theme="dark"] {
+    --page-bg: #18181b;
+    --page-fg: #fafafa;
+    --muted-fg: #a1a1aa;
+    --card-bg: #27272a;
+    --card-border: #3f3f46;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 48px;
+    background: var(--page-bg);
+    color: var(--page-fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    transition: background 0.15s, color 0.15s;
+  }
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 40px;
+  }
+  h1 { font-size: 22px; margin: 0; }
+  h2 {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted-fg);
+    margin: 48px 0 16px;
+    border-bottom: 1px solid var(--card-border);
+    padding-bottom: 8px;
+  }
+  h3 {
+    font-size: 13px;
+    color: var(--muted-fg);
+    margin: 28px 0 12px;
+    font-weight: 600;
+  }
+  #theme-toggle {
+    border: 1px solid var(--card-border);
+    background: var(--card-bg);
+    color: var(--page-fg);
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .swatch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+  }
+  .swatch {
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--card-bg);
+  }
+  .swatch-color { height: 64px; }
+  .swatch-label {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  .swatch-name { font-weight: 600; word-break: break-word; }
+  .swatch-hex { color: var(--muted-fg); font-family: ui-monospace, monospace; }
+  .type-specimen {
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    background: var(--card-bg);
+    padding: 20px 24px;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 24px;
+  }
+  .type-specimen-sample { flex: 1; min-width: 0; }
+  .type-specimen-meta {
+    font-size: 12px;
+    color: var(--muted-fg);
+    font-family: ui-monospace, monospace;
+    white-space: nowrap;
+    text-align: right;
+  }
+  table.token-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  table.token-table th, table.token-table td {
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--card-border);
+  }
+  table.token-table th {
+    color: var(--muted-fg);
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  table.token-table td.token-name, table.token-table td.token-value {
+    font-family: ui-monospace, monospace;
+  }
+  table.token-table .swatch-chip {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    margin-right: 6px;
+    vertical-align: -1px;
+    border: 1px solid var(--card-border);
+  }
+</style>
+</head>
+<body data-theme="light">
+
+<header>
+  <h1><!--TITLE--></h1>
+  <button id="theme-toggle" onclick="document.body.dataset.theme = document.body.dataset.theme === 'dark' ? 'light' : 'dark'">
+    Toggle light / dark
+  </button>
+</header>
+
+<h2>Color primitives</h2>
+<!--COLOR_PRIMITIVES-->
+
+<h2>Semantic colors</h2>
+<!--SEMANTIC_COLORS-->
+
+<h2>Typography</h2>
+<!--TYPE_SPECIMENS-->
+
+<h2>Full token reference</h2>
+<table class="token-table">
+  <thead><tr><th>Token</th><th>Value</th><th>Binds to</th></tr></thead>
+  <tbody>
+    <!--TOKEN_TABLE_ROWS-->
+  </tbody>
+</table>
+
+</body>
+</html>
