@@ -8,6 +8,8 @@ Ask for a design system / style guide / token library in Figma — from scratch,
 
 - **Four ways in, one schema out.** Start from nothing (pure interview), a screenshot of UI you like, an existing Figma file to harmonize with, or a live URL to pull direction from — they all converge on the same intermediate schema before anything touches Figma.
 - **Two-tier color model, not a flat palette.** A raw primitive scale per hue (generated in [OKLCH](https://bottosson.github.io/posts/oklab/) for perceptually-even steps, not naive HSL) plus semantic aliases that reference it — change a primitive later and every semantic alias pointing at it updates with it.
+- **Optional third tier and extra scales.** Component tokens (aliasing the semantic layer, e.g. `button/background/default`) and flat spacing/radius scales are available when asked; the default stays colors + typography so the system doesn't get over-tokenized. The three-tier model follows [zeroheight's guide to token hierarchy](https://zeroheight.com/learn/how-design-tokens-work-types-structure-and-hierarchy/).
+- **Schema is validated, not just eyeballed.** `scripts/validate_tokens.py` flags role names that carry a color or light/dark word, raw hex values inside semantic tokens, and alias targets that don't exist.
 - **Contrast is checked, not assumed.** Every semantic text/background pairing is run through a real WCAG contrast calculation before the preview ships, against whatever accessibility target was set (AA by default).
 - **A real HTML preview before anything is written** — live-rendered type specimens and color swatches, plus a full token-reference table, so there's a concrete approval step before touching a real file.
 - **Three paths to actually create the tokens in Figma**, in order of how little setup they need: a self-contained Figma plugin that needs zero external tooling (works on any plan, no MCP required), a third-party write-capable Figma MCP if one's connected, or Figma's own official remote MCP for fully agent-driven creation. See [`references/figma-write.md`](references/figma-write.md) for the tradeoffs and exact mechanics of each — including two easy-to-miss Figma Variables API requirements (explicit `scopes`, and `{r,g,b,a}` with alpha) that this skill sets correctly by default.
@@ -16,7 +18,7 @@ Ask for a design system / style guide / token library in Figma — from scratch,
 
 Drop this repo's contents into `.claude/skills/figma-design-tokens/` in your project (or wherever your Claude Skills live). Claude Code (or any Claude Skills–compatible client) will pick it up automatically.
 
-No dependencies beyond Python 3 standard library (`scripts/color_tools.py` — color math and contrast checking) and, if you use the default write path, nothing at all: it's a plain Figma plugin you import once.
+No dependencies beyond Python 3 standard library (`scripts/color_tools.py` — color math and contrast checking; `scripts/validate_tokens.py` — schema checks) and, if you use the default write path, nothing at all: it's a plain Figma plugin you import once.
 
 ## Repo layout
 
@@ -31,6 +33,7 @@ references/
   figma-write.md                # the three ways to actually create tokens in Figma
 scripts/
   color_tools.py                # OKLCH-based scale generation + WCAG contrast checking
+  validate_tokens.py            # schema checks: role-based names, no raw hex in aliases, valid targets
 assets/
   preview-template.html         # the HTML preview template
   figma-plugin/                 # the self-contained Figma plugin (manifest.json + code.js)

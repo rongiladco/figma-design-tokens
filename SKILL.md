@@ -7,7 +7,7 @@ description: "Builds a color + typography design token system (primitive palette
 
 Turns a blank (or existing) Figma file into a working token system: a primitive color scale, semantic color aliases built on top of it, and semantic typography styles — created as real Figma Variables and Text Styles, not just documented. This is a prompt-only skill — everything below runs inside a Claude Code session (or any Claude Skills–compatible client), there's no deployed code.
 
-**Scope, on purpose:** colors and typography only. Not spacing, radius, elevation/shadow, or component tokens. If a future run needs those, extend the schema deliberately rather than let this quietly grow into a general design-system builder.
+**Scope, on purpose:** colors and typography by default. Two optional extensions, each only when asked in §2: **component tokens** (a third tier aliasing the semantic layer) and **flat spacing/radius scales**. Still out of scope: elevation/shadow (composite values) and motion (needs code-side support). Don't let this quietly grow into a general design-system builder — every extra token is something to name, document and govern.
 
 ## 0. Before anything else
 
@@ -43,6 +43,8 @@ Regardless of path, a reference (or lack of one) only tells you *what exists* �
 - Does it need dark mode / theming, or just one mode for now? (determines whether color Variables need multiple modes set up from the start — much cheaper to decide now than to retrofit)
 - Accessibility target for text contrast — WCAG AA (4.5:1 body text) is the sane default if they don't have a preference, but ask rather than assuming AAA or nothing.
 - Any fixed font-licensing constraint (must be a Google Font / already-licensed family), or open to a recommendation?
+- Only if it's product UI: which components (if any) need their own tokens — e.g. button, input — or should components just use the semantic tokens directly? Default is the latter; component tokens are a local-override tier and are cheap to add later but noisy to add speculatively (see `references/token-schema.md`).
+- Spacing and radius scales too, or colors + type only? (Flat scales, no alias tier, unless asked.)
 
 If the project involves Hebrew or RTL content, apply your own house RTL/typography conventions if you have them (or ask). Font pairing, line-height, and letter-spacing defaults tuned for Latin type often need real adjustment for Hebrew — don't assume they carry over unchanged.
 
@@ -54,9 +56,11 @@ Read `references/token-schema.md` for the exact structure (two-tier colors: prim
 
 For any primitive color scale derived from a base hex, use `scripts/color_tools.py generate-scale` rather than eyeballing tints/shades by hand — color math is exactly the kind of thing that's easy to get subtly wrong through reasoning alone and cheap to get right with a script. Use `scripts/color_tools.py check-contrast` to verify every semantic text/background pairing actually meets the accessibility target chosen in §2 *before* presenting the preview — catching a failing pairing after Figma creation is much more annoying to fix than before.
 
+Then run `scripts/validate_tokens.py <schema.json>` on the schema (same shape as the plugin's `TOKENS` block) — it fails on semantic/component names that carry a color or light/dark word (`text/grey` breaks the moment dark mode arrives), raw hex values inside a semantic/component definition, and alias targets that don't exist, and warns on a component token that skips the semantic tier. Fix errors before the preview; a naming mistake caught here costs one edit, caught after Figma creation it costs a rename across every layer that applied the token. Also hold the line on over-tokenizing: a value with no second consumer stays a local value, not a token.
+
 ## 4. Build and show the preview
 
-Build an HTML preview from `assets/preview-template.html` — color swatches for every primitive and semantic token (labeled with name + hex), live type specimens for every semantic text style (rendered at actual size/weight/line-height, not just described), and the full token-reference table at the bottom (every token, its value, and what it binds to for semantic/alias tokens) — the swatches are for judging how it looks, the table is what someone would actually reference while implementing.
+Build an HTML preview from `assets/preview-template.html` — color swatches for every primitive and semantic token (labeled with name + hex), live type specimens for every semantic text style (rendered at actual size/weight/line-height, not just described), and (if in scope) the component-token and spacing/radius tables, and the full token-reference table at the bottom (every token, its value, and what it binds to for semantic/alias tokens) — the swatches are for judging how it looks, the table is what someone would actually reference while implementing.
 
 Save it to the calling project's `Output/` folder (create one if it doesn't exist) and open it locally for review. **Don't publish this anywhere** (as a Claude Artifact, a hosted link, etc.) — a design-system preview is exactly the kind of draft that should stay private on disk until it's approved, not turn into a shareable link by default.
 
@@ -76,4 +80,4 @@ Don't fabricate a "created" result on any path — with Path A specifically, you
 
 ## 8. Wrap up
 
-Summarize what was created (counts of primitive/semantic color variables, text styles, which modes if any) and confirm it's live in the file. If this project keeps a running notes file for skill gotchas (see §0), add anything worth remembering — a naming choice that worked well, a Figma API quirk hit during creation, a question that should've been asked earlier. Don't skip this even on a smooth run; the quirks worth remembering are often small.
+Summarize what was created (counts of primitive/semantic color variables, component tokens and dimension variables if any, text styles, which modes if any) and confirm it's live in the file. If this project keeps a running notes file for skill gotchas (see §0), add anything worth remembering — a naming choice that worked well, a Figma API quirk hit during creation, a question that should've been asked earlier. Don't skip this even on a smooth run; the quirks worth remembering are often small.

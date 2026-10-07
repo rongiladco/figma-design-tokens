@@ -26,6 +26,16 @@ const TOKENS = {
   // "background/default": { aliasOf: { Light: "gray/50", Dark: "gray/900" } }
   semantics: {},
 
+  // OPTIONAL third tier. Name -> the semantic token it aliases, e.g.
+  // "button/background/default": "background/brand". Leave {} to skip.
+  componentsCollectionName: "Components",
+  components: {},
+
+  // OPTIONAL flat FLOAT scales (spacing / radius). Leave {} to skip.
+  // "space/4": 16, "radius/md": 8
+  dimensionsCollectionName: "Dimensions",
+  dimensions: {},
+
   // size/lineHeight in px, letterSpacing in em (fraction of size).
   // "heading/xl": { family: "Inter", style: "Bold", size: 40, lineHeight: 48, letterSpacing: -0.02 }
   textStyles: {},
@@ -61,6 +71,23 @@ function scopesForSemantic(name) {
   return ["ALL_FILLS"];
 }
 
+// Component tokens: scope by whichever role segment appears in the name
+// (e.g. "button/background/default" -> fills). Unknown -> ALL_FILLS.
+function scopesForComponent(name) {
+  const parts = name.split("/");
+  if (parts.includes("background")) return ["FRAME_FILL", "SHAPE_FILL"];
+  if (parts.includes("text")) return ["TEXT_FILL"];
+  if (parts.includes("border")) return ["STROKE_COLOR"];
+  return ["ALL_FILLS"];
+}
+
+// Dimensions are meant to be applied directly (not hidden like primitives).
+function scopesForDimension(name) {
+  if (name.startsWith("space/")) return ["GAP"]; // Figma's GAP covers gap and padding
+  if (name.startsWith("radius/")) return ["CORNER_RADIUS"];
+  return ["WIDTH_HEIGHT"];
+}
+
 async function getOrCreateCollection(name, modeNames) {
   const collections = await figma.variables.getLocalVariableCollectionsAsync();
   let collection = collections.find((c) => c.name === name);
@@ -80,7 +107,7 @@ async function getOrCreateCollection(name, modeNames) {
 }
 
 async function run() {
-  const report = { createdPrimitives: 0, createdSemantics: 0, createdTextStyles: 0, skipped: [] };
+  const report = { createdPrimitives: 0, createdSemantics: 0, createdTextStyles: 0, createdComponents: 0, createdDimensions: 0, skipped: [] };
 
   const primitivesCollection = await getOrCreateCollection(TOKENS.primitivesCollectionName, ["Value"]);
   const semanticCollection = await getOrCreateCollection(TOKENS.semanticCollectionName, TOKENS.modes);
@@ -139,6 +166,57 @@ async function run() {
     if (anySet) report.createdSemantics++;
   }
 
+  // Component tokens (optional): aliased to semantic variables. Single mode -
+  // the light/dark switch already happens in the semantic collection.
+  if (Object.keys(TOKENS.components).length) {
+    const compCollection = await getOrCreateCollection(TOKENS.componentsCollectionName, ["Value"]);
+    const compModeId = compCollection.modes[0].modeId;
+    const semVarByName = { ...existingSemByName };
+    (await figma.variables.getLocalVariablesAsync("COLOR"))
+      .filter((v) => v.variableCollectionId === semanticCollection.id)
+      .forEach((v) => (semVarByName[v.name] = v));
+    const existingComp = {};
+    (await figma.variables.getLocalVariablesAsync("COLOR"))
+      .filter((v) => v.variableCollectionId === compCollection.id)
+      .forEach((v) => (existingComp[v.name] = v));
+    for (const [name, targetName] of Object.entries(TOKENS.components)) {
+      if (existingComp[name]) {
+        report.skipped.push(`component "${name}" already exists - left untouched`);
+        continue;
+      }
+      const target = semVarByName[targetName];
+      if (!target) {
+        report.skipped.push(`component "${name}" skipped - semantic "${targetName}" not found`);
+        continue;
+      }
+      const v = figma.variables.createVariable(name, compCollection, "COLOR");
+      v.scopes = scopesForComponent(name);
+      v.setValueForMode(compModeId, { type: "VARIABLE_ALIAS", id: target.id });
+      report.createdComponents++;
+    }
+  }
+
+  // Dimensions (optional): flat FLOAT scales
+  if (Object.keys(TOKENS.dimensions).length) {
+    const dimCollection = await getOrCreateCollection(TOKENS.dimensionsCollectionName, ["Value"]);
+    const dimModeId = dimCollection.modes[0].modeId;
+    const existingDim = new Set(
+      (await figma.variables.getLocalVariablesAsync("FLOAT"))
+        .filter((v) => v.variableCollectionId === dimCollection.id)
+        .map((v) => v.name)
+    );
+    for (const [name, value] of Object.entries(TOKENS.dimensions)) {
+      if (existingDim.has(name)) {
+        report.skipped.push(`dimension "${name}" already exists - left untouched`);
+        continue;
+      }
+      const v = figma.variables.createVariable(name, dimCollection, "FLOAT");
+      v.scopes = scopesForDimension(name);
+      v.setValueForMode(dimModeId, value);
+      report.createdDimensions++;
+    }
+  }
+
   // Text styles
   const existingTextStyleNames = new Set(figma.getLocalTextStyles().map((s) => s.name));
   for (const [name, def] of Object.entries(TOKENS.textStyles)) {
@@ -160,7 +238,10 @@ async function run() {
 
   const summary =
     `Created ${report.createdPrimitives} primitive(s), ${report.createdSemantics} semantic color(s), ` +
-    `${report.createdTextStyles} text style(s).` +
+    `${report.createdTextStyles} text style(s)` +
+    (report.createdComponents ? `, ${report.createdComponents} component token(s)` : "") +
+    (report.createdDimensions ? `, ${report.createdDimensions} dimension(s)` : "") +
+    "." +
     (report.skipped.length ? ` Skipped ${report.skipped.length} - see console for detail.` : "");
   if (report.skipped.length) console.log("figma-design-tokens: skipped", report.skipped);
   figma.closePlugin(summary);
