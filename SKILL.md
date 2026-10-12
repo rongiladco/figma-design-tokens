@@ -1,11 +1,11 @@
 ---
 name: figma-design-tokens
-description: "Builds a color + typography design token system (primitive palette, semantic aliases, semantic text styles) and creates it as Figma Variables and Text Styles in a blank or existing Figma file. Use whenever someone wants to set up a design system, style guide, or token library in Figma — including phrasing like 'set up tokens in Figma', 'build a Figma design system from scratch', 'I have a blank Figma file and need colors + type styles', or 'turn this screenshot/site/Figma file into a token system'. Also trigger when the user shares screenshots, an existing Figma file, or a reference URL and wants a matching design system built from it, even if they never say the word 'tokens'."
+description: "Builds a color + typography design token system (primitive palette, semantic aliases, semantic text styles) and creates it as Figma Variables and Text Styles in a blank or existing Figma file. Use whenever someone wants to set up a design system, style guide, or token library in Figma — including phrasing like 'set up tokens in Figma', 'build a Figma design system from scratch', 'I have a blank Figma file and need colors + type styles', or 'turn this screenshot/site/Figma file into a token system'. Also builds a DESIGN.md (Google's open spec) from the same tokens for designers who continue in code with Claude Code instead of Figma — trigger on 'DESIGN.md', 'design system for Claude Code', 'design in code instead of Figma'. Also trigger when the user shares screenshots, an existing Figma file, or a reference URL and wants a matching design system built from it, even if they never say the word 'tokens'."
 ---
 
 # Figma Design Tokens
 
-Turns a blank (or existing) Figma file into a working token system: a primitive color scale, semantic color aliases built on top of it, and semantic typography styles — created as real Figma Variables and Text Styles, not just documented. This is a prompt-only skill — everything below runs inside a Claude Code session (or any Claude Skills–compatible client), there's no deployed code.
+Turns a blank (or existing) Figma file — and/or a `DESIGN.md` for designers who continue in code — into a working token system: a primitive color scale, semantic color aliases built on top of it, and semantic typography styles — created as real Figma Variables and Text Styles, not just documented. This is a prompt-only skill — everything below runs inside a Claude Code session (or any Claude Skills–compatible client), there's no deployed code.
 
 **Scope, on purpose:** colors and typography by default. Two optional extensions, each only when asked in §2: **component tokens** (a third tier aliasing the semantic layer) and **flat spacing/radius scales**. Still out of scope: elevation/shadow (composite values) and motion (needs code-side support). Don't let this quietly grow into a general design-system builder — every extra token is something to name, document and govern.
 
@@ -38,6 +38,7 @@ Each of these is mechanically different (reading pixels vs. querying Figma vs. f
 
 Regardless of path, a reference (or lack of one) only tells you *what exists* — it doesn't tell you what the system should optimize for. Ask, batched via `AskUserQuestion` where they're genuinely open decisions:
 
+- Where will it be used — Figma, code (a `DESIGN.md` for Claude Code), or both? Decides whether §6–§7 or §7b (or both) run. If the designer prefers designing in code, the DESIGN.md is the main deliverable and Figma is optional.
 - What's this for — product UI, marketing site, both? (affects how much the type scale needs to flex across contexts)
 - Any brand colors or fonts that are fixed and must be built around, vs. fully open?
 - Does it need dark mode / theming, or just one mode for now? (determines whether color Variables need multiple modes set up from the start — much cheaper to decide now than to retrofit)
@@ -60,7 +61,7 @@ Then run `scripts/validate_tokens.py <schema.json>` on the schema (same shape as
 
 ## 4. Build and show the preview
 
-Build an HTML preview from `assets/preview-template.html` — color swatches for every primitive and semantic token (labeled with name + hex), live type specimens for every semantic text style (rendered at actual size/weight/line-height, not just described), and (if in scope) the component-token and spacing/radius tables, and the full token-reference table at the bottom (every token, its value, and what it binds to for semantic/alias tokens) — the swatches are for judging how it looks, the table is what someone would actually reference while implementing.
+Build the HTML preview with `scripts/build_preview.py <schema.json> -o Output/<name>/preview.html --title "..." --lang he|en` (fills `assets/preview-template.html`; the "Components in use" panel renders the component tokens and follows the Light/Dark toggle) — color swatches for every primitive and semantic token (labeled with name + hex), live type specimens for every semantic text style (rendered at actual size/weight/line-height, not just described), and (if in scope) the component-token and spacing/radius tables, and the full token-reference table at the bottom (every token, its value, and what it binds to for semantic/alias tokens) — the swatches are for judging how it looks, the table is what someone would actually reference while implementing.
 
 Save it to the calling project's `Output/` folder (create one if it doesn't exist) and open it locally for review. **Don't publish this anywhere** (as a Claude Artifact, a hosted link, etc.) — a design-system preview is exactly the kind of draft that should stay private on disk until it's approved, not turn into a shareable link by default.
 
@@ -68,16 +69,27 @@ Save it to the calling project's `Output/` folder (create one if it doesn't exis
 
 Show the preview, get feedback, adjust the schema (§3) and rebuild the preview (§4). Loop until the user explicitly approves — don't move to §6 on an ambiguous "looks fine" if they clearly haven't looked closely. This approval is the checkpoint that makes the Figma write in §7 a deliberate, reviewed action rather than an automated one touching a real file.
 
-## 6. Confirm the target file
+## 6. Confirm the target file (Figma path only)
 
 Ask for the Figma file URL or key, and whether it's the blank file they started from or an existing file with content already in it. If it's an existing file, this matters for §7 — there may already be Variables or Styles with colliding names.
 
-## 7. Create the tokens in Figma
+## 7. Create the tokens in Figma (Figma path only)
 
 Read `references/figma-write.md` for the three ways to do this: **Path A**, the default — fill in the bundled plugin template (`assets/figma-plugin/`) with the approved schema and have the user import + run it once inside Figma (no MCP needed at all); **Path B** — a third-party write-capable Figma MCP, if one happens to be connected; or **Path C** — Figma's own official remote MCP (`use_figma`), which lets you drive the whole creation yourself in small verified steps, no user hands-on-Figma required, but comes with its own execution contract (return-based, no `closePlugin`/`notify`) and a mandatory skill resource gating it — re-check with `ToolSearch` for what's actually connected, most Figma MCPs people connect by default are read-only, don't assume. Whichever path: check the target file for existing Variable collections/Text Styles that would collide with the names you're about to create, ask the user how to resolve any collision (overwrite / rename / merge) rather than picking silently, then create the primitive Variables (with `scopes = []`), the semantic Variables aliased to them (with role-based `scopes`), and the Text Styles (with a real `style` name, not a numeric weight).
 
 Don't fabricate a "created" result on any path — with Path A specifically, you can't see the outcome yourself, so ask the user to relay what the plugin reported before declaring success. With Path C, verify via a read-back before reporting, since scripts there run atomically and a mid-batch failure needs to surface honestly ("created 14 of 16...") rather than get rounded up.
 
+## 7b. Export a DESIGN.md (code path)
+
+Read `references/design-md.md` first. Runs after the schema is approved (§5); needs no Figma file.
+
+1. **Short interview**, free text, one message — the five questions in `references/design-md.md`. Write the answers to `design-md-answers.json` next to the schema. Do not invent answers: anything the designer skips stays a `TODO(interview)` marker. (Generated prose about the product's purpose or rules is exactly where models fabricate.)
+2. `python3 scripts/design_md.py export schema.json --answers design-md-answers.json -o DESIGN.md`
+3. `python3 scripts/design_md.py check DESIGN.md --schema schema.json --answers design-md-answers.json` — broken references and duplicate headings are errors; hex/px values in prose that aren't tokens are drift warnings; leftover TODOs are listed. Fix, re-export, re-check.
+4. Run the official linter (`npx --yes @google/design.md lint DESIGN.md`) — it is a required step, because it catches what `check` cannot (unrecognised keys, orphaned tokens, non-spec component properties). It runs a downloaded npm package, so ask first (once per session). Report the findings as-is; `references/design-md.md` ("Expected linter result") says which warnings are accepted and which to fix.
+5. Offer the one-line rule for the project's `CLAUDE.md` pointing at `DESIGN.md` (propose it; don't write it unasked), and the diagnostic loop: generate three screens with the file loaded, look for deviations, add the missing constraint.
+6. Save to the project's `Output/` (or the project root if the user is starting a code project right now). Don't publish it anywhere by default.
+
 ## 8. Wrap up
 
-Summarize what was created (counts of primitive/semantic color variables, component tokens and dimension variables if any, text styles, which modes if any) and confirm it's live in the file. If this project keeps a running notes file for skill gotchas (see §0), add anything worth remembering — a naming choice that worked well, a Figma API quirk hit during creation, a question that should've been asked earlier. Don't skip this even on a smooth run; the quirks worth remembering are often small.
+Summarize what was created (counts of primitive/semantic color variables, component tokens and dimension variables if any, text styles, which modes if any) and confirm it's live in the file (Figma path), and/or the DESIGN.md path, TODO count, and `check` result (code path). If this project keeps a running notes file for skill gotchas (see §0), add anything worth remembering — a naming choice that worked well, a Figma API quirk hit during creation, a question that should've been asked earlier. Don't skip this even on a smooth run; the quirks worth remembering are often small.
