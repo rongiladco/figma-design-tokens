@@ -12,6 +12,7 @@ Ask for a design system / style guide / token library in Figma — from scratch,
 - **Schema is validated, not just eyeballed.** `scripts/validate_tokens.py` flags role names that carry a color or light/dark word, raw hex values inside semantic tokens, and alias targets that don't exist.
 - **A code path too: `DESIGN.md`.** For designers who continue in code with Claude Code instead of (or as well as) Figma, the same approved schema exports to a [`DESIGN.md`](https://github.com/google-labs-code/design.md) (Google's open spec, alpha): a short interview supplies the "why" (intent and boundaries per colour, never-rules, states, voice), and `scripts/design_md.py` writes the file, then `check`s it for broken references, prose that drifts from the tokens, and unanswered `TODO(interview)` markers. Every file also gets a few always-on baseline rules learned from a real test (no `opacity` on text over coloured surfaces, no invented hover states, no invented radius/spacing/layout values, theme switching via `data-theme`). See [`references/design-md.md`](references/design-md.md).
 - **Contrast is checked, not assumed.** Every semantic text/background pairing is run through a real WCAG contrast calculation before the preview ships, against whatever accessibility target was set (AA by default).
+- **Rules that fail the build, not just instructions.** `design_md.py export-css` writes one `tokens.css` from the schema (with `--check` to catch drift), and `scripts/tokens_lint.py` scans app source and exits 1 on a new hard-coded colour or a px/rem value a token already holds, naming the token to use. Existing code can adopt it through a baseline ratchet. See SKILL.md §7c.
 - **A real HTML preview before anything is written** — live-rendered type specimens and color swatches, a component gallery (each variant rendered as a usage example), a Light/Dark toggle, and a full token-reference table, so there's a concrete approval step before touching a real file. `scripts/build_preview.py` builds it from the template.
 - **Three paths to actually create the tokens in Figma**, in order of how little setup they need: a self-contained Figma plugin that needs zero external tooling (works on any plan, no MCP required), a third-party write-capable Figma MCP if one's connected, or Figma's own official remote MCP for fully agent-driven creation. See [`references/figma-write.md`](references/figma-write.md) for the tradeoffs and exact mechanics of each — including two easy-to-miss Figma Variables API requirements (explicit `scopes`, and `{r,g,b,a}` with alpha) that this skill sets correctly by default.
 
@@ -36,7 +37,8 @@ references/
 scripts/
   color_tools.py                # OKLCH-based scale generation + WCAG contrast checking
   validate_tokens.py            # schema checks: role-based names, no raw hex in aliases, valid targets
-  design_md.py                  # export the schema to DESIGN.md, and check it (broken refs, prose drift, TODOs)
+  design_md.py                  # export the schema to DESIGN.md, and check it (broken refs, prose drift, TODOs); export-css writes tokens.css
+  tokens_lint.py                # fail on hard-coded colours/lengths in app source that a token already holds
   build_preview.py              # fills the preview template from a schema
 assets/
   preview-template.html         # the HTML preview template

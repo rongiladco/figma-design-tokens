@@ -4,6 +4,7 @@ DESIGN.md exporter + checker for the figma-design-tokens skill.
 
   design_md.py export <schema.json> [--answers answers.json] [-o DESIGN.md]
   design_md.py check  <DESIGN.md> --schema schema.json
+  design_md.py export-css <schema.json> -o tokens.css [--check]
 
 Turns the approved token schema (the same JSON the Figma plugin reads) into a
 DESIGN.md that follows Google's open spec (github.com/google-labs-code/design.md,
@@ -408,6 +409,44 @@ def cmd_check(a):
     sys.exit(1 if errors else 0)
 
 
+CSS_HEADER = ("/* GENERATED from the token schema by design_md.py export-css. Do not edit by hand:\n"
+              "   change the schema and re-export. `export-css --check` fails when this file drifts.\n"
+              "   tokens_lint.py reads this file as the allowed set of values. */\n")
+
+
+def css_file(tokens):
+    """Standalone tokens.css the app imports: one source for code, Figma and DESIGN.md."""
+    root = [f"  --color-{k}: {v};" for k, v in tokens["colors"].items()]
+    for k, t in tokens["typography"].items():
+        root.append(f"  --type-{k}-family: {t['fontFamily']};")
+        root.append(f"  --type-{k}-size: {t['fontSize']};")
+        root.append(f"  --type-{k}-weight: {t['fontWeight']};")
+        root.append(f"  --type-{k}-line-height: {t['lineHeight']};")
+        if "letterSpacing" in t:
+            root.append(f"  --type-{k}-letter-spacing: {t['letterSpacing']};")
+    root += [f"  --space-{k}: {v};" for k, v in tokens["spacing"].items()]
+    root += [f"  --radius-{k}: {v};" for k, v in tokens["rounded"].items()]
+    out = CSS_HEADER + ":root {\n" + "\n".join(root) + "\n}\n"
+    if tokens["colors-dark"]:
+        out += '\n[data-theme="dark"] {\n' + "\n".join(
+            f"  --color-{k}: {v};" for k, v in tokens["colors-dark"].items()) + "\n}\n"
+    return out
+
+
+def cmd_export_css(a):
+    schema = json.load(open(a.schema, encoding="utf-8"))
+    css = css_file(build_tokens(schema, {}))
+    if a.check:
+        cur = open(a.output, encoding="utf-8").read() if os.path.exists(a.output) else None
+        if cur != css:
+            print(f"DRIFT: {a.output} {'is missing' if cur is None else 'differs from the schema'}; re-run export-css")
+            sys.exit(1)
+        print(f"OK: {a.output} matches the schema")
+        return
+    open(a.output, "w", encoding="utf-8").write(css)
+    print(f"wrote {a.output}: {css.count('--')} custom properties")
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -421,8 +460,12 @@ def main():
     c.add_argument("design_md")
     c.add_argument("--schema", required=True)
     c.add_argument("--answers")
+    x = sub.add_parser("export-css")
+    x.add_argument("schema")
+    x.add_argument("-o", "--output", required=True)
+    x.add_argument("--check", action="store_true", help="exit 1 if the file differs from what the schema generates")
     a = p.parse_args()
-    cmd_export(a) if a.cmd == "export" else cmd_check(a)
+    {"export": cmd_export, "check": cmd_check, "export-css": cmd_export_css}[a.cmd](a)
 
 
 if __name__ == "__main__":

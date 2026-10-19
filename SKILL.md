@@ -90,6 +90,16 @@ Read `references/design-md.md` first. Runs after the schema is approved (§5); n
 5. Offer the one-line rule for the project's `CLAUDE.md` pointing at `DESIGN.md` (propose it; don't write it unasked), and the diagnostic loop: generate three screens with the file loaded, look for deviations, add the missing constraint.
 6. Save to the project's `Output/` (or the project root if the user is starting a code project right now). Don't publish it anywhere by default.
 
+## 7c. Enforce it in the app (code path)
+
+A DESIGN.md is an instruction; nothing fails when it is ignored. Two scripts make the rule a check, so the rules and the check are the same artifact:
+
+1. **One CSS source.** `python3 scripts/design_md.py export-css schema.json -o <app>/src/styles/tokens.css` writes the colour roles (Light + `[data-theme="dark"]`), type styles, `--space-*` and `--radius-*` as custom properties. The app imports it; nobody edits it. `export-css ... --check` exits 1 if the file differs from what the schema generates (run it next to the tests). An app whose `tokens.css` is hand-written skips this step; the lint reads that file instead.
+2. **Lint the source.** Add `<app>/tokens-lint.json` (`tokens`, `src`, `ignore` + `ignoreReason`, `baseline`) and run `python3 scripts/tokens_lint.py <app>`. It exits 1 on a new hard-coded colour, or a px/rem literal that a token already holds, and names the token to use. Existing debt: `--write-baseline` once, then only violations above the baseline fail (a ratchet). List exempt files with a reason (e.g. mock screens of other products, illustration data).
+3. Add the command to the project's test/build commands (CI or a pre-commit step) so a violation is a red build rather than a screen that is slightly off.
+
+Limits, on purpose: it checks static source, not computed styles, and it ignores lengths no token holds unless `--lengths-all`.
+
 ## 8. Wrap up
 
 Summarize what was created (counts of primitive/semantic color variables, component tokens and dimension variables if any, text styles, which modes if any) and confirm it's live in the file (Figma path), and/or the DESIGN.md path, TODO count, and `check` result (code path). If this project keeps a running notes file for skill gotchas (see §0), add anything worth remembering — a naming choice that worked well, a Figma API quirk hit during creation, a question that should've been asked earlier. Don't skip this even on a smooth run; the quirks worth remembering are often small.
