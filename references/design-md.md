@@ -16,6 +16,7 @@ For a designer who continues in code (Claude Code) instead of Figma. The same ap
 |---|---|
 | semantic color (resolved to hex, first mode) | `colors.<role>` - spec vocabulary where there is a clear 1:1 (`background/default`→`surface`, `background/brand`→`primary`, `text/default`→`on-surface`, `text/on-brand`→`on-primary`, `border/default`→`outline`, `background/danger`→`error`...), otherwise the role without its group prefix (`background/cta`→`cta`). Collisions fall back to the full name. |
 | second mode (Dark) | **a generated CSS block in the Colors section** (`:root` + `[data-theme="dark"]`, `--color-<role>`), all roles in both modes. Default (`--dark-style css`). A `colors-dark` map in the frontmatter is available with `--dark-style frontmatter`, but the official linter reports it as `token-like-ignored` (not a spec key; export tools skip it), so it is not the default. `design_md.py check` verifies the CSS block matches the tokens (errors on any mismatch), so it cannot silently drift. |
+| `darkSelector` (optional, top-level) | when the second mode is a **dark surface** inside a light page (dark sections or cards), not a site-wide theme: a CSS selector such as `".on-dark, .card"`. The CSS block, `export-css` and `check` use it instead of `[data-theme="dark"]`, and the baseline theme-toggle rule is replaced by a surface rule (mark the section, never hard-code light-on-dark colours, no toggle). Omit it for a real light/dark theme. |
 | primitives (50-900 ramps) | not exported (only the resolved values of roles in use) |
 | text styles | `typography.<name>` - `heading/*`→`headline-*`; Figma style name → numeric `fontWeight`; `lineHeight` kept in px; `letterSpacing` in em; font stack gets a generic fallback |
 | `space/*`, `radius/*` | `spacing.<n>` (quoted keys), `rounded.<size>` |
@@ -61,7 +62,7 @@ Answers file shape:
 2. Large display text uses the default text token at an on-scale size, not the brand colour, unless a typography+colour pair says so.
 3. Every interactive component has a defined hover state or explicitly none; do not invent one when no `-hover` variant exists.
 4. Use only radius, spacing and layout values defined in the file; if a needed value is missing, use the nearest defined one or ask the designer. Never invent.
-5. (Only when a dark mode exists) Switch themes with `data-theme="dark"` on the root and a visible toggle; never `prefers-color-scheme` alone, never a hard-coded second palette.
+5. (Only when a dark mode exists) Switch themes with `data-theme="dark"` on the root and a visible toggle; never `prefers-color-scheme` alone, never a hard-coded second palette. When the schema sets `darkSelector` (dark surfaces, not a theme), this rule is replaced by: mark the dark section or card with that class, never hard-code light-on-dark colours inside it, no toggle.
 
 Rule 4 is written whether or not shapes/layout were answered; it is what stops an agent from filling a gap with its own numbers. The rules are generic on purpose (no hex/px values) so `check` stays quiet. Radius and layout values are NOT in the baseline: those are the designer's decisions (interview keys `shapes` / `layout`).
 

@@ -114,6 +114,7 @@ def build_tokens(schema, answers):
               "spacing": {}, "components": {}, "component_meta": {}}
     if len(modes) > 1:
         tokens["colors-dark"] = colors_by_mode[modes[1]]
+    tokens["dark-selector"] = schema.get("darkSelector")
     for name, t in schema.get("textStyles", {}).items():
         key = name.replace("heading/", "headline-").replace("/", "-")
         fam = t["family"]
@@ -233,12 +234,16 @@ def bullets(items):
     return "\n".join(f"- {i}" for i in items)
 
 
+def dark_sel(tokens):
+    return tokens.get("dark-selector") or '[data-theme="dark"]'
+
+
 def css_block(tokens):
     def blk(sel, d):
         return sel + " {\n" + "\n".join(f"  --color-{k}: {v};" for k, v in d.items()) + "\n}"
     out = [blk(":root", tokens["colors"])]
     if tokens["colors-dark"]:
-        out.append(blk('[data-theme="dark"]', tokens["colors-dark"]))
+        out.append(blk(dark_sel(tokens), tokens["colors-dark"]))
     return "```css\n" + "\n".join(out) + "\n```"
 
 
@@ -255,6 +260,10 @@ BASELINE_RULES = [
     "Use only radius, spacing and layout values that are defined in this file. If a needed value is not defined, "
     "do not invent one: use the nearest defined value, or stop and ask the designer.",
 ]
+BASELINE_SURFACE_RULE = (
+    "The second colour mode is a dark SURFACE, not a theme: put the surface class on the section (or card) and every colour role "
+    "switches inside it. Never hard-code light-on-dark colours inside such a section, and do not add a theme toggle."
+)
 BASELINE_DARK_RULE = (
     "Switch themes by setting `data-theme=\"dark\"` on the root element (a visible toggle), using the generated CSS variables. "
     "Do not rely on `prefers-color-scheme` alone, and never hard-code a second set of colours."
@@ -305,7 +314,7 @@ def build_body(tokens, schema, answers, dark_style="css"):
             dd.append(bullets(f"{prefix} {i}" for i in items))
     base = list(BASELINE_RULES)
     if tokens["colors-dark"]:
-        base.append(BASELINE_DARK_RULE)
+        base.append(BASELINE_SURFACE_RULE if schema.get("darkSelector") else BASELINE_DARK_RULE)
     base_block = "Baseline rules (apply to every project; added by the skill):\n" + bullets(base)
     blocks.append(section("Do's and Don'ts", ("\n".join(dd) if dd else todo(
         "imperative rules with a concrete referent (a token, a component, a count). 'Do use button-primary for one action per view'.")) + "\n\n" + base_block))
@@ -386,8 +395,8 @@ def cmd_check(a):
             warns.append(f"prose mentions {n}px, which is not a token value (drift between prose and YAML?)")
     m = re.search(r"```css\n(.*?)\n```", body, re.S)
     if m:
-        light_css, _, dark_css = m.group(1).partition('[data-theme="dark"]')
-        get = lambda t: dict(re.findall(r"--color-([\w-]+):\s*(#[0-9a-fA-F]{6})", t))
+        light_css, _, dark_css = m.group(1).partition(dark_sel(tokens))
+        get = lambda t: dict(re.findall(r"--color-([\w-]+):\s*(#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?)\b", t))
         for label, css, want in (("light", light_css, tokens["colors"]), ("dark", dark_css, tokens["colors-dark"] or {})):
             got = get(css)
             for k, v in want.items():
@@ -428,7 +437,7 @@ def css_file(tokens):
     root += [f"  --radius-{k}: {v};" for k, v in tokens["rounded"].items()]
     out = CSS_HEADER + ":root {\n" + "\n".join(root) + "\n}\n"
     if tokens["colors-dark"]:
-        out += '\n[data-theme="dark"] {\n' + "\n".join(
+        out += '\n' + dark_sel(tokens) + ' {\n' + "\n".join(
             f"  --color-{k}: {v};" for k, v in tokens["colors-dark"].items()) + "\n}\n"
     return out
 
